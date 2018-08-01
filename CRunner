@@ -1,0 +1,19 @@
+
+/**
+ * The client's runner //Note server needs to go first
+ * 
+ * @author Naylene Rondon
+ * @version V1
+ */
+import javax.swing.JFrame;
+public class CRunner 
+{
+    public static void main(String[] args)
+    {
+        Client client;
+        client = new Client("127.0.0.1");//local host ip 
+        client.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        client.startRunning();//starts the client
+    }
+}
+

@@ -1,0 +1,185 @@
+import java.io.*;
+import java.net.*;
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+
+/**
+ * Redo of server class with GUI
+ * 
+ * @author Naylene Rondon
+ * @version V2
+ */
+public class Server extends JFrame
+{
+    private JTextField text; //User Messages
+    private JTextArea chatWindow; //Chat window
+    private ObjectOutputStream output; // viewing 
+    private ObjectInputStream input; //Allows typing
+    private ServerSocket pocket; //server
+    private Socket connectPocket; //Connection
+    
+    /**
+     * Constructor
+     */
+    public Server()
+    {
+        super("Chatter"); //Title
+        text = new JTextField(); //Chat area
+        text.setEditable(false); //Cannot chat if not connected
+        text.addActionListener(new ActionListener()  //Saw this is an example, never done before but this is the action performance of the user input text
+            {
+                public void actionPerformed(ActionEvent event)
+                {
+                    sendMessage(event.getActionCommand());
+                    text.setText("");
+                }
+            }
+        );
+        
+        add(text, BorderLayout.SOUTH);
+        chatWindow = new JTextArea(); //Creating a window
+        add(new JScrollPane(chatWindow)); //Adding Chat Window
+        setSize(400,600); //Size
+        setVisible(true); 
+    }
+    
+    /**
+     * Starting and Running the Server
+     */
+    public void startRunning()
+    {
+        try{
+            pocket = new ServerSocket(22973, 2); //Port Number  //Num of users
+            while(true)
+            {
+                try
+                {
+                    waitForConnection(); //Patience in connecting
+                    setupStreams(); //input and output streams
+                    whileChatting(); //send messages back and forth
+                }
+                catch(EOFException eofe)
+                {
+                    showMessage("\n  Server Connection Has Ended  ");
+                }
+                finally  //https://docs.oracle.com/javase/tutorial/essential/exceptions/finally.html
+                {
+                    closeEverything();
+                }
+            }
+        }
+        catch(IOException ioe)
+        {
+            ioe.printStackTrace();
+        }
+    }
+    
+    private void waitForConnection() throws IOException
+    {
+        showMessage("Waiting for another user. Please wait. :)\n");
+        connectPocket = pocket.accept(); //When a second user appears, there's a connection
+        showMessage(" Now Connected to " +connectPocket.getInetAddress().getHostName()); 
+        //https://docs.oracle.com/javase/7/docs/api/java/net/InetAddress.html   
+        //When used in V1, has an issue with private and public inetaddress, hope will work this time
+    }
+    
+    /**
+     * Setup the stream for inputs and outputs
+     */
+    private void setupStreams() throws IOException
+    {
+        output = new ObjectOutputStream(connectPocket.getOutputStream()); //outputing messages
+        output.flush(); //https://www.tutorialspoint.com/java/io/outputstream_flush.htm
+        input = new ObjectInputStream(connectPocket.getInputStream()); //inputing messages
+        showMessage("\n Everything is setup \n");
+    } 
+    
+    /**
+     * While Chatting
+     */
+    private void whileChatting() throws IOException
+    {
+        String message = " You are connected! ";
+        sendMessage(message);
+        canType(true);
+        do
+        {
+            try
+            {
+                message = (String)(input.readObject());
+                showMessage("\n "+ message);
+            }
+            catch(ClassNotFoundException notFound)
+            {
+                showMessage("\n" + connectPocket.getInetAddress().getHostName() + "Invalid\n");
+            }
+        }while (message.equals("CLIENT - END"));
+    }
+    
+    /**
+     * Send message to the client
+     */
+    private void sendMessage(String message)
+    {
+        try
+        {
+            output.writeObject("Sever: " + message); //sends the message
+            output.flush();
+            showMessage("\n Server: " +message);
+        }
+        catch(IOException ioe)
+        {
+            chatWindow.append("\n ERROR! \n");
+        }
+    }
+    
+    /**
+     * This is what is updating the text in chat window
+     */
+    private void showMessage(final String text)
+    {
+        //We'll be using a new thread
+        SwingUtilities.invokeLater( new Runnable ()
+        {
+            public void run()
+            {
+                chatWindow.append(text);
+            }
+        }
+        );
+    }
+    
+    /**
+     * Editable text field
+     */
+    private void canType(final boolean bool)
+    {
+        SwingUtilities.invokeLater( new Runnable ()
+        {
+            public void run()
+            {
+                text.setEditable(bool);
+            }
+        }
+        );
+    }
+    
+    /**
+     * Closes
+     */
+    private void closeEverything(){
+        showMessage("\n Closing... \n");
+        canType(false);
+        try
+        {
+            output.close();
+            input.close();
+            connectPocket.close();
+        }
+        catch(IOException IOE)
+        {
+            IOE.printStackTrace();
+        }
+    }
+}
